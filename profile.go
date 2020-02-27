@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"remy.io/diago/pprof"
+	"github.com/remeh/diago/pprof"
 )
 
 type Profile struct {

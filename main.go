@@ -6,7 +6,7 @@ import (
 	"os"
 	"runtime"
 
-	"remy.io/diago/pprof"
+	"github.com/remeh/diago/pprof"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module remy.io/diago
+module github.com/remeh/diago
 
 go 1.13
 

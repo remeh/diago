@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/gogo/protobuf/proto"
-	"remy.io/diago/pprof"
+	"github.com/remeh/diago/pprof"
 )
 
 func readProtoFile(filename string) (*pprof.Profile, error) {
