@@ -110,6 +110,9 @@ func (p *Profile) BuildTree(treeName string, aggregateByFunction bool, searchFie
 	for _, s := range p.Samples {
 		node := tree.root
 		for _, f := range s.Functions {
+			if s.Value == 0 {
+				continue
+			}
 			node = node.AddFunction(f, s.Value, s.PercentTotal, aggregateByFunction)
 		}
 	}
