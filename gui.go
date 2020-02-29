@@ -24,12 +24,12 @@ type GUI struct {
 }
 
 func NewGUI(profile *pprof.Profile) *GUI {
-	gui := &GUI{
+	g := &GUI{
 		pprofProfile:        profile,
 		aggregateByFunction: true,
 	}
-	gui.buildTree()
-	return gui
+	g.reloadProfile()
+	return g
 }
 
 func (g *GUI) OpenWindow() {
@@ -38,16 +38,14 @@ func (g *GUI) OpenWindow() {
 }
 
 func (g *GUI) onAggregationClick() {
-	g.buildTree()
+	g.reloadProfile()
 }
 
 func (g *GUI) onSearch() {
 	g.tree = g.profile.BuildTree(config.File, g.aggregateByFunction, g.searchField)
 }
 
-func (g *GUI) buildTree() {
-	fmt.Println("Building the tree. Aggregation by functions:", g.aggregateByFunction)
-	n := time.Now()
+func (g *GUI) reloadProfile() {
 	profile, err := NewProfile(g.pprofProfile)
 	if err != nil {
 		fmt.Println("err:", err)
@@ -55,7 +53,6 @@ func (g *GUI) buildTree() {
 	}
 	g.profile = profile
 	g.tree = profile.BuildTree(config.File, g.aggregateByFunction, g.searchField)
-	fmt.Printf("%s to build the tree\n", time.Since(n))
 }
 
 func (g *GUI) windowLoop() {
@@ -110,8 +107,8 @@ func (g *GUI) treeNodeFromFunctionsTreeNode(node *treeNode) giu.Layout {
 			value = time.Duration(child.value).String()
 			tooltip = fmt.Sprintf("%s of %s", value, time.Duration(g.profile.TotalSampling).String())
 		} else {
-			value = fmt.Sprintf("%s of %s", humanize.IBytes(uint64(child.value)), humanize.IBytes(g.profile.TotalSampling))
-			tooltip = value
+			value = humanize.IBytes(uint64(child.value))
+			tooltip = fmt.Sprintf("%s of %s", value, humanize.IBytes(g.profile.TotalSampling))
 		}
 
 		lineText := fmt.Sprintf("%s %s:%d - %s", child.function.Name, path.Base(child.function.File), child.function.LineNumber, value)
