@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 )
 
 type FunctionsTree struct {
@@ -24,7 +23,7 @@ func (t *FunctionsTree) sort() {
 type treeNode struct {
 	children []*treeNode
 	function *Function
-	value    time.Duration
+	value    int64
 	percent  float64
 	visible  bool
 }
@@ -50,7 +49,7 @@ func (n *treeNode) AddFunction(f Function, value int64, percent float64, aggrega
 	for i, child := range n.children {
 		// if existing, we add the values to the current node
 		if child.ID(!aggregateByFunction) == f.String(!aggregateByFunction) {
-			child.value = time.Duration(child.value.Nanoseconds() + value)
+			child.value = child.value + value
 			child.percent += percent
 			n.children[i] = child
 			return child
@@ -59,7 +58,7 @@ func (n *treeNode) AddFunction(f Function, value int64, percent float64, aggrega
 	// doesn't exist, create it
 	node := &treeNode{
 		function: &f,
-		value:    time.Duration(value),
+		value:    value,
 		percent:  percent,
 	}
 

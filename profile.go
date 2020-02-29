@@ -10,8 +10,11 @@ import (
 
 type Profile struct {
 	Samples
-	SamplingDuration time.Duration
-	CaptureDuration  time.Duration
+	TotalSampling   uint64
+	CaptureDuration time.Duration
+
+	// "cpu" or "heap"
+	Type string
 
 	functionsMap           FunctionsMap
 	functionsMapByLocation FunctionsMap
@@ -36,9 +39,27 @@ func NewProfile(p *pprof.Profile) (*Profile, error) {
 	// let's now build the profile
 	// ----------------------
 
-	if stringsMap[uint64(p.GetPeriodType().Type)] != "cpu" {
-		return nil, fmt.Errorf("Diago only supports cpu profile for now")
+	typ := stringsMap[uint64(p.GetPeriodType().Type)]
+
+	if typ != "cpu" && typ != "space" {
+		return nil, fmt.Errorf("unsupported type: %s", typ)
 	}
+
+	profile := readProfile(p, stringsMap, functionsMap, functionsMapByLocation, locationsMap)
+
+	switch typ {
+	case "cpu":
+		profile.Type = "cpu"
+	case "space":
+		profile.Type = "heap"
+	}
+
+	return profile, nil
+}
+
+func readProfile(p *pprof.Profile, stringsMap StringsMap,
+	functionsMap FunctionsMap, functionsMapByLocation FunctionsMap,
+	locationsMap LocationsMap) *Profile {
 
 	var samples Samples
 
@@ -47,18 +68,20 @@ func NewProfile(p *pprof.Profile) (*Profile, error) {
 		for i := len(pprofSample.LocationId) - 1; i >= 0; i-- {
 			l := pprofSample.LocationId[i]
 			sample.Functions = append(sample.Functions, functionsMapByLocation[l])
-			// TODO(remy): isn't there anything to do with the [0]?
-			//			   I think it represents how many samples were aggregated
-			//			   into this one, meaning we don't really need to use [0]
+
+			// TODO(remy):
+			// cpu [1] cpu usage
+			// heap [1] allocated
+			// heap [3] in use
 			sample.Value = pprofSample.GetValue()[1]
 		}
 		samples = append(samples, sample)
 	}
 
 	// compute the total sampling time
-	var totalSum int64
+	var totalSum uint64
 	for _, s := range samples {
-		totalSum += s.Value
+		totalSum += uint64(s.Value)
 	}
 
 	// compute the percentage for every sample
@@ -68,15 +91,15 @@ func NewProfile(p *pprof.Profile) (*Profile, error) {
 	}
 
 	return &Profile{
-		Samples:          samples,
-		SamplingDuration: time.Duration(totalSum),
-		CaptureDuration:  time.Duration(p.GetDurationNanos()),
+		Samples:         samples,
+		TotalSampling:   totalSum,
+		CaptureDuration: time.Duration(p.GetDurationNanos()),
 
 		functionsMap:           functionsMap,
 		functionsMapByLocation: functionsMapByLocation,
 		locationsMap:           locationsMap,
 		stringsMap:             stringsMap,
-	}, nil
+	}
 }
 
 func (p *Profile) BuildTree(treeName string, aggregateByFunction bool, searchField string) *FunctionsTree {

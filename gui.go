@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"path"
+	"time"
 
 	"github.com/AllenDang/giu"
 	"github.com/AllenDang/giu/imgui"
+	"github.com/dustin/go-humanize"
 )
 
 type GUI struct {
@@ -56,10 +58,17 @@ func (g *GUI) windowLoop() {
 }
 
 func (g *GUI) treeFromFunctionsTree(tree *FunctionsTree) giu.Layout {
+	var text string
+	if g.profile.Type == "cpu" {
+		text = fmt.Sprintf("%s - total sampling duration: %s - total capture duration %s", tree.name, time.Duration(g.profile.TotalSampling).String(), g.profile.CaptureDuration.String())
+	} else {
+		text = fmt.Sprintf("%s - total allocated memory: %s", tree.name, humanize.IBytes(g.profile.TotalSampling))
+	}
+
 	return giu.Layout{
 		giu.Line(
 			giu.TreeNode(
-				fmt.Sprintf("%s - total sampling duration: %s - total capture duration %s", tree.name, g.profile.SamplingDuration.String(), g.profile.CaptureDuration.String()),
+				text,
 				giu.TreeNodeFlagsNone|giu.TreeNodeFlagsFramed|giu.TreeNodeFlagsDefaultOpen,
 				g.treeNodeFromFunctionsTreeNode(tree.root),
 			),
@@ -82,15 +91,24 @@ func (g *GUI) treeNodeFromFunctionsTreeNode(node *treeNode) giu.Layout {
 			flags |= giu.TreeNodeFlagsLeaf
 		}
 
-		lineText := fmt.Sprintf("%s %s:%d - %s", child.function.Name, path.Base(child.function.File), child.function.LineNumber, child.value.String())
+		var value, tooltip string
+		if g.profile.Type == "cpu" {
+			value = time.Duration(child.value).String()
+			tooltip = fmt.Sprintf("%s of %s", value, time.Duration(g.profile.TotalSampling).String())
+		} else {
+			value = fmt.Sprintf("%s of %s", humanize.IBytes(uint64(child.value)), humanize.IBytes(g.profile.TotalSampling))
+			tooltip = value
+		}
+
+		lineText := fmt.Sprintf("%s %s:%d - %s", child.function.Name, path.Base(child.function.File), child.function.LineNumber, value)
 		if g.aggregateByFunction {
-			lineText = fmt.Sprintf("%s %s - %s", child.function.Name, path.Base(child.function.File), child.value.String())
+			lineText = fmt.Sprintf("%s %s - %s", child.function.Name, path.Base(child.function.File), value)
 		}
 
 		scale := giu.Context.GetPlatform().GetContentScale()
 		rv = append(rv, giu.Line(
 			giu.ProgressBar(float32(child.percent)/100, 90/scale, 0, fmt.Sprintf("%.3f%%", child.percent)),
-			giu.Tooltip(fmt.Sprintf("%s of %s", child.value.String(), g.profile.SamplingDuration.String())),
+			giu.Tooltip(tooltip),
 			giu.TreeNode(
 				lineText,
 				flags,
