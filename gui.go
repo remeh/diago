@@ -2,28 +2,34 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"time"
 
 	"github.com/AllenDang/giu"
 	"github.com/AllenDang/giu/imgui"
 	"github.com/dustin/go-humanize"
+
+	"github.com/remeh/diago/pprof"
 )
 
 type GUI struct {
-	profile *Profile
-	tree    *FunctionsTree
+	pprofProfile *pprof.Profile
+	profile      *Profile
+	tree         *FunctionsTree
 
+	profileType         string
 	searchField         string
 	aggregateByFunction bool
 }
 
-func NewGUI(profile *Profile, tree *FunctionsTree) *GUI {
-	return &GUI{
-		profile:             profile,
-		tree:                tree,
+func NewGUI(profile *pprof.Profile) *GUI {
+	gui := &GUI{
+		pprofProfile:        profile,
 		aggregateByFunction: true,
 	}
+	gui.buildTree()
+	return gui
 }
 
 func (g *GUI) OpenWindow() {
@@ -41,7 +47,13 @@ func (g *GUI) onSearch() {
 
 func (g *GUI) buildTree() {
 	fmt.Println("Re-building the tree. Aggregation by functions:", g.aggregateByFunction)
-	g.tree = g.profile.BuildTree(config.File, g.aggregateByFunction, g.searchField)
+	profile, err := NewProfile(g.pprofProfile)
+	if err != nil {
+		fmt.Println("err:", err)
+		os.Exit(-1)
+	}
+	g.profile = profile
+	g.tree = profile.BuildTree(config.File, g.aggregateByFunction, g.searchField)
 }
 
 func (g *GUI) windowLoop() {

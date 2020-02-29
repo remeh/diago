@@ -22,17 +22,8 @@ func main() {
 	// ----------------------
 
 	var pprofProfile *pprof.Profile
-	var profile *Profile
 
 	if pprofProfile, err = readProtoFile(config.File); err != nil {
-		fmt.Println("err:", err)
-		os.Exit(-1)
-	}
-
-	// convert to a profile diago object
-	// ----------------------
-
-	if profile, err = NewProfile(pprofProfile); err != nil {
 		fmt.Println("err:", err)
 		os.Exit(-1)
 	}
@@ -40,6 +31,6 @@ func main() {
 	// start the gui
 	// ----------------------
 
-	gui := NewGUI(profile, profile.BuildTree(config.File, true, ""))
+	gui := NewGUI(pprofProfile)
 	gui.OpenWindow()
 }
