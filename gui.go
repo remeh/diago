@@ -42,11 +42,12 @@ func (g *GUI) onAggregationClick() {
 }
 
 func (g *GUI) onSearch() {
-	g.buildTree()
+	g.tree = g.profile.BuildTree(config.File, g.aggregateByFunction, g.searchField)
 }
 
 func (g *GUI) buildTree() {
-	fmt.Println("Re-building the tree. Aggregation by functions:", g.aggregateByFunction)
+	fmt.Println("Building the tree. Aggregation by functions:", g.aggregateByFunction)
+	n := time.Now()
 	profile, err := NewProfile(g.pprofProfile)
 	if err != nil {
 		fmt.Println("err:", err)
@@ -54,6 +55,7 @@ func (g *GUI) buildTree() {
 	}
 	g.profile = profile
 	g.tree = profile.BuildTree(config.File, g.aggregateByFunction, g.searchField)
+	fmt.Printf("%s to build the tree\n", time.Since(n))
 }
 
 func (g *GUI) windowLoop() {
