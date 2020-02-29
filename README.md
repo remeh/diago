@@ -12,12 +12,17 @@ Diago is a visualization tool for profiles generated with `pprof`.
 
 ## Installation
 
+Due to the underlying usage of `go-gl/glfw`, there is a few system dependencies (i.e. some Xorg libraries on Linux or headers/libraries on macOS). See [this link](https://github.com/go-gl/glfw#installation) for detailed information.
+
+You'll need Go installed (only tested with Go >= 1.12), then:
+
 ```
 go get -u github.com/remeh/diago
 ```
 
-The `diago` binary should be available. Note that the build could take a few
-seconds to complete due to the dependencies.
+The `diago` binary should be available in `$GOPATH/bin` or `$HOME/go/bin` if the `$GOPATH` environment variable is not set.
+
+Note that the build could take a few seconds to complete due to the dependencies.
 
 ## Usage
 
@@ -29,6 +34,7 @@ seconds to complete due to the dependencies.
 
   - Read a profile from HTTP
   - Test profiles not generated with Go `http/pprof`
+  - Heap visualization
 
 ## Author
 
