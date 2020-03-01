@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/remeh/diago/pprof"
@@ -22,7 +23,7 @@ type Profile struct {
 	stringsMap             StringsMap
 }
 
-func NewProfile(p *pprof.Profile) (*Profile, error) {
+func NewProfile(p *pprof.Profile, mode sampleMode) (*Profile, error) {
 	// start by building some maps because everything
 	// is indexed in various maps.
 	// ----------------------
@@ -39,13 +40,13 @@ func NewProfile(p *pprof.Profile) (*Profile, error) {
 	// let's now build the profile
 	// ----------------------
 
-	typ := stringsMap[uint64(p.GetPeriodType().Type)]
+	typ := ReadProfileType(p)
 
 	if typ != "cpu" && typ != "space" {
 		return nil, fmt.Errorf("unsupported type: %s", typ)
 	}
 
-	profile := readProfile(p, stringsMap, functionsMap, functionsMapByLocation, locationsMap)
+	profile := readProfile(p, stringsMap, functionsMap, functionsMapByLocation, locationsMap, mode)
 
 	switch typ {
 	case "cpu":
@@ -57,11 +58,30 @@ func NewProfile(p *pprof.Profile) (*Profile, error) {
 	return profile, nil
 }
 
+func ReadProfileType(p *pprof.Profile) string {
+	return p.StringTable[uint64(p.GetPeriodType().Type)]
+}
+
 func readProfile(p *pprof.Profile, stringsMap StringsMap,
 	functionsMap FunctionsMap, functionsMapByLocation FunctionsMap,
-	locationsMap LocationsMap) *Profile {
+	locationsMap LocationsMap, mode sampleMode) *Profile {
 
 	var samples Samples
+	var idx int
+
+	switch {
+	case mode == ModeDefault:
+		fallthrough
+	case ReadProfileType(p) == "cpu" && mode == ModeCpu:
+		idx = 1
+	case ReadProfileType(p) == "space" && mode == ModeHeapAlloc:
+		idx = 1
+	case ReadProfileType(p) == "space" && mode == ModeHeapInuse:
+		idx = 3
+	default:
+		fmt.Printf("err: incompatible mode and profile type. %s & %s\n", ReadProfileType(p), mode)
+		os.Exit(-1)
+	}
 
 	for _, pprofSample := range p.Sample {
 		var sample Sample
@@ -73,7 +93,7 @@ func readProfile(p *pprof.Profile, stringsMap StringsMap,
 			// cpu [1] cpu usage
 			// heap [1] allocated
 			// heap [3] in use
-			sample.Value = pprofSample.GetValue()[1]
+			sample.Value = pprofSample.GetValue()[idx]
 		}
 		samples = append(samples, sample)
 	}

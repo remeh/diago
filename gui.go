@@ -20,18 +20,20 @@ type GUI struct {
 	tree         *FunctionsTree
 
 	// ui options
-	mode                guiMode
-	profileType         string
+	mode                sampleMode
 	searchField         string
 	aggregateByFunction bool
 }
 
-type guiMode string
+type sampleMode string
 
 var (
-	ModeCpu       guiMode = "cpu"
-	ModeHeapAlloc guiMode = "heap-alloc"
-	ModeHeapInuse guiMode = "heap-inuse"
+	// use this when you don't really know the mode
+	// to use to read the profile.
+	ModeDefault   sampleMode = ""
+	ModeCpu       sampleMode = "cpu"
+	ModeHeapAlloc sampleMode = "heap-alloc"
+	ModeHeapInuse sampleMode = "heap-inuse"
 )
 
 func NewGUI(profile *pprof.Profile) *GUI {
@@ -48,10 +50,13 @@ func NewGUI(profile *pprof.Profile) *GUI {
 	// or the ModeHeapAlloc.
 	// ----------------------
 
-	if g.profileType == "cpu" {
-		g.mode = ModeCpu
-	} else {
+	switch ReadProfileType(profile) {
+	case "space":
 		g.mode = ModeHeapAlloc
+	case "cpu":
+		g.mode = ModeCpu
+	default:
+		g.mode = ModeDefault
 	}
 
 	return g
@@ -66,6 +71,16 @@ func (g *GUI) onAggregationClick() {
 	g.reloadProfile()
 }
 
+func (g *GUI) onAllocated() {
+	g.mode = ModeHeapAlloc
+	g.reloadProfile()
+}
+
+func (g *GUI) onInuse() {
+	g.mode = ModeHeapInuse
+	g.reloadProfile()
+}
+
 func (g *GUI) onSearch() {
 	g.tree = g.profile.BuildTree(config.File, g.aggregateByFunction, g.searchField)
 }
@@ -74,7 +89,7 @@ func (g *GUI) reloadProfile() {
 	// read the pprof profile
 	// ----------------------
 
-	profile, err := NewProfile(g.pprofProfile)
+	profile, err := NewProfile(g.pprofProfile, g.mode)
 	if err != nil {
 		fmt.Println("err:", err)
 		os.Exit(-1)
@@ -88,16 +103,43 @@ func (g *GUI) reloadProfile() {
 }
 
 func (g *GUI) windowLoop() {
-	size := giu.Context.GetPlatform().DisplaySize()
-	scale := giu.Context.GetPlatform().GetContentScale()
 	giu.SingleWindow("Diago", giu.Layout{
-		giu.Line(
-			giu.InputTextV("filter...", size[0]/4/scale, &g.searchField, imgui.InputTextFlagsCallbackAlways, nil, g.onSearch),
-			giu.Checkbox("aggregate by functions", &g.aggregateByFunction, g.onAggregationClick),
-			giu.Tooltip("By default, Diago aggregates by functions, uncheck to have the information up to the lines of code"),
-		),
+		g.toolbox(),
 		g.treeFromFunctionsTree(g.tree),
 	})
+}
+
+func (g *GUI) toolbox() *giu.LineWidget {
+	size := giu.Context.GetPlatform().DisplaySize()
+	scale := giu.Context.GetPlatform().GetContentScale()
+
+	widgets := make([]giu.Widget, 0)
+
+	// search bar
+	// ----------------------
+
+	widgets = append(widgets,
+		giu.InputTextV("filter...", size[0]/4/scale, &g.searchField, imgui.InputTextFlagsCallbackAlways, nil, g.onSearch))
+
+	// aggregate per func option
+	// ----------------------
+	widgets = append(widgets,
+		giu.Checkbox("aggregate by functions", &g.aggregateByFunction, g.onAggregationClick))
+	widgets = append(widgets,
+		giu.Tooltip("By default, Diago aggregates by functions, uncheck to have the information up to the lines of code"))
+
+	// in heap mode, offer the two modes
+	// ----------------------
+	if g.mode == ModeHeapAlloc || g.mode == ModeHeapInuse {
+		widgets = append(widgets,
+			giu.RadioButton("allocated", g.mode == ModeHeapAlloc, g.onAllocated))
+		widgets = append(widgets,
+			giu.RadioButton("inuse", g.mode == ModeHeapInuse, g.onInuse))
+	}
+
+	return giu.Line(
+		widgets...,
+	)
 }
 
 func (g *GUI) treeFromFunctionsTree(tree *FunctionsTree) giu.Layout {
@@ -105,10 +147,13 @@ func (g *GUI) treeFromFunctionsTree(tree *FunctionsTree) giu.Layout {
 	// ----------------------
 
 	var text string
-	if g.profile.Type == "cpu" {
+	switch g.mode {
+	case ModeCpu:
 		text = fmt.Sprintf("%s - total sampling duration: %s - total capture duration %s", tree.name, time.Duration(g.profile.TotalSampling).String(), g.profile.CaptureDuration.String())
-	} else {
+	case ModeHeapAlloc:
 		text = fmt.Sprintf("%s - total allocated memory: %s", tree.name, humanize.IBytes(g.profile.TotalSampling))
+	case ModeHeapInuse:
+		text = fmt.Sprintf("%s - total in-use memory: %s", tree.name, humanize.IBytes(g.profile.TotalSampling))
 	}
 
 	// start generating the tree
