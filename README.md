@@ -1,10 +1,13 @@
 # Diago
 
-Diago is a visualization tool for profiles generated with `pprof`.
+Diago is a visualization tool for profiles and heap snapshots generated with `pprof`.
 
 ## Features
 
   - Visual interface with an easy-to-use read tree
+    - CPU usage
+    - Total heap allocated
+    - Heap in-use
   - Search in functions and filenames
   - Aggregate per functions or per function calls (lines)
 
@@ -27,14 +30,13 @@ Note that the build could take a few seconds to complete due to the dependencies
 ## Usage
 
 ```
-./diago -file <profile-to-visualize>
+./diago -file <profile-or-heap-snapshot-to-visualize>
 ```
 
 ## Roadmap
 
   - Read a profile from HTTP
   - Test profiles not generated with Go `http/pprof`
-  - Heap visualization
 
 ## Author
 
