@@ -14,21 +14,46 @@ import (
 )
 
 type GUI struct {
+	// data
 	pprofProfile *pprof.Profile
 	profile      *Profile
 	tree         *FunctionsTree
 
+	// ui options
+	mode                guiMode
 	profileType         string
 	searchField         string
 	aggregateByFunction bool
 }
 
+type guiMode string
+
+var (
+	ModeCpu       guiMode = "cpu"
+	ModeHeapAlloc guiMode = "heap-alloc"
+	ModeHeapInuse guiMode = "heap-inuse"
+)
+
 func NewGUI(profile *pprof.Profile) *GUI {
+	// init the base GUI object and load the profile
+	// ----------------------
+
 	g := &GUI{
 		pprofProfile:        profile,
 		aggregateByFunction: true,
 	}
 	g.reloadProfile()
+
+	// depending on the profile opened, switch the either the ModeCpu
+	// or the ModeHeapAlloc.
+	// ----------------------
+
+	if g.profileType == "cpu" {
+		g.mode = ModeCpu
+	} else {
+		g.mode = ModeHeapAlloc
+	}
+
 	return g
 }
 
@@ -46,12 +71,19 @@ func (g *GUI) onSearch() {
 }
 
 func (g *GUI) reloadProfile() {
+	// read the pprof profile
+	// ----------------------
+
 	profile, err := NewProfile(g.pprofProfile)
 	if err != nil {
 		fmt.Println("err:", err)
 		os.Exit(-1)
 	}
 	g.profile = profile
+
+	// rebuild the displayed tree
+	// ----------------------
+
 	g.tree = profile.BuildTree(config.File, g.aggregateByFunction, g.searchField)
 }
 
@@ -69,12 +101,18 @@ func (g *GUI) windowLoop() {
 }
 
 func (g *GUI) treeFromFunctionsTree(tree *FunctionsTree) giu.Layout {
+	// generate the header
+	// ----------------------
+
 	var text string
 	if g.profile.Type == "cpu" {
 		text = fmt.Sprintf("%s - total sampling duration: %s - total capture duration %s", tree.name, time.Duration(g.profile.TotalSampling).String(), g.profile.CaptureDuration.String())
 	} else {
 		text = fmt.Sprintf("%s - total allocated memory: %s", tree.name, humanize.IBytes(g.profile.TotalSampling))
 	}
+
+	// start generating the tree
+	// ----------------------
 
 	return giu.Layout{
 		giu.Line(
@@ -102,19 +140,12 @@ func (g *GUI) treeNodeFromFunctionsTreeNode(node *treeNode) giu.Layout {
 			flags |= giu.TreeNodeFlagsLeaf
 		}
 
-		var value, tooltip string
-		if g.profile.Type == "cpu" {
-			value = time.Duration(child.value).String()
-			tooltip = fmt.Sprintf("%s of %s", value, time.Duration(g.profile.TotalSampling).String())
-		} else {
-			value = humanize.IBytes(uint64(child.value))
-			tooltip = fmt.Sprintf("%s of %s", value, humanize.IBytes(g.profile.TotalSampling))
-		}
+		// generate the displayed texts
+		// ----------------------
+		_, tooltip, lineText := g.texts(child)
 
-		lineText := fmt.Sprintf("%s %s:%d - %s", child.function.Name, path.Base(child.function.File), child.function.LineNumber, value)
-		if g.aggregateByFunction {
-			lineText = fmt.Sprintf("%s %s - %s", child.function.Name, path.Base(child.function.File), value)
-		}
+		// append the line to the tree
+		// ----------------------
 
 		scale := giu.Context.GetPlatform().GetContentScale()
 		rv = append(rv, giu.Line(
@@ -129,4 +160,19 @@ func (g *GUI) treeNodeFromFunctionsTreeNode(node *treeNode) giu.Layout {
 	}
 
 	return rv
+}
+
+func (g *GUI) texts(node *treeNode) (value string, tooltip string, lineText string) {
+	if g.profile.Type == "cpu" {
+		value = time.Duration(node.value).String()
+		tooltip = fmt.Sprintf("%s of %s", value, time.Duration(g.profile.TotalSampling).String())
+	} else {
+		value = humanize.IBytes(uint64(node.value))
+		tooltip = fmt.Sprintf("%s of %s", value, humanize.IBytes(g.profile.TotalSampling))
+	}
+	lineText = fmt.Sprintf("%s %s:%d - %s", node.function.Name, path.Base(node.function.File), node.function.LineNumber, value)
+	if g.aggregateByFunction {
+		lineText = fmt.Sprintf("%s %s - %s", node.function.Name, path.Base(node.function.File), value)
+	}
+	return value, tooltip, lineText
 }
