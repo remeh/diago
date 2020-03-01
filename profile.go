@@ -89,10 +89,9 @@ func readProfile(p *pprof.Profile, stringsMap StringsMap,
 			l := pprofSample.LocationId[i]
 			sample.Functions = append(sample.Functions, functionsMapByLocation[l])
 
-			// TODO(remy):
 			// cpu [1] cpu usage
-			// heap [1] allocated
-			// heap [3] in use
+			// space [1] heap allocated
+			// space [3] heap in use
 			sample.Value = pprofSample.GetValue()[idx]
 		}
 		samples = append(samples, sample)

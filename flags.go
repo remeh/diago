@@ -9,6 +9,6 @@ type Config struct {
 var config Config
 
 func init() {
-	flag.StringVar(&config.File, "file", "", "Profile file to read")
+	flag.StringVar(&config.File, "file", "", "Profile or heap snapshot file to read")
 	flag.Parse()
 }
