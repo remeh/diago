@@ -35,6 +35,7 @@ Note that the build could take a few seconds to complete due to the dependencies
 
 ## Roadmap
 
+  - There is a couple known issues with the GUI lib on high DPI screens
   - Read a profile from HTTP
   - Test profiles not generated with Go `http/pprof`
 
