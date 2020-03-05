@@ -187,7 +187,7 @@ func (g *GUI) treeNodeFromFunctionsTreeNode(node *treeNode) giu.Layout {
 
 		// generate the displayed texts
 		// ----------------------
-		_, tooltip, lineText := g.texts(child)
+		_, _, tooltip, lineText := g.texts(child)
 
 		// append the line to the tree
 		// ----------------------
@@ -207,17 +207,19 @@ func (g *GUI) treeNodeFromFunctionsTreeNode(node *treeNode) giu.Layout {
 	return rv
 }
 
-func (g *GUI) texts(node *treeNode) (value string, tooltip string, lineText string) {
+func (g *GUI) texts(node *treeNode) (value string, self string, tooltip string, lineText string) {
 	if g.profile.Type == "cpu" {
 		value = time.Duration(node.value).String()
-		tooltip = fmt.Sprintf("%s of %s", value, time.Duration(g.profile.TotalSampling).String())
+		self = time.Duration(node.self).String()
+		tooltip = fmt.Sprintf("%s of %s\nself: %s", value, time.Duration(g.profile.TotalSampling).String(), self)
 	} else {
 		value = humanize.IBytes(uint64(node.value))
-		tooltip = fmt.Sprintf("%s of %s", value, humanize.IBytes(g.profile.TotalSampling))
+		self = humanize.IBytes(uint64(node.self))
+		tooltip = fmt.Sprintf("%s of %s\nself: %s", value, humanize.IBytes(g.profile.TotalSampling), self)
 	}
-	lineText = fmt.Sprintf("%s %s:%d - %s", node.function.Name, path.Base(node.function.File), node.function.LineNumber, value)
+	lineText = fmt.Sprintf("%s %s:%d - %s / self: %s", node.function.Name, path.Base(node.function.File), node.function.LineNumber, value, self)
 	if g.aggregateByFunction {
-		lineText = fmt.Sprintf("%s %s - %s", node.function.Name, path.Base(node.function.File), value)
+		lineText = fmt.Sprintf("%s %s - %s / self: %s", node.function.Name, path.Base(node.function.File), value, self)
 	}
-	return value, tooltip, lineText
+	return value, self, tooltip, lineText
 }

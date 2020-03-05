@@ -22,7 +22,8 @@ func (t *FunctionsTree) sort() {
 
 type treeNode struct {
 	children []*treeNode
-	function *Function
+	function Function
+	self     int64
 	value    int64
 	percent  float64
 	visible  bool
@@ -36,7 +37,7 @@ func NewFunctionsTree(treeName string) *FunctionsTree {
 }
 
 func (n treeNode) ID(lineNumber bool) string {
-	if n.function == nil {
+	if n.function.Name == "" {
 		return "Root"
 	}
 	return n.function.String(lineNumber)
@@ -45,20 +46,23 @@ func (n treeNode) ID(lineNumber bool) string {
 // AddFunction adds the given function to the tree.
 // AddFunction takes care of aggregating the values per functions calls or line of
 // code depending on the aggregateByFunction parameter.
-func (n *treeNode) AddFunction(f Function, value int64, percent float64, aggregateByFunction bool) *treeNode {
+func (n *treeNode) AddFunction(f Function, value, self int64, percent float64, aggregateByFunction bool) *treeNode {
 	for i, child := range n.children {
 		// if existing, we add the values to the current node
 		if child.ID(!aggregateByFunction) == f.String(!aggregateByFunction) {
-			child.value = child.value + value
+			child.value += value
+			child.self += self
 			child.percent += percent
 			n.children[i] = child
 			return child
 		}
 	}
+
 	// doesn't exist, create it
 	node := &treeNode{
-		function: &f,
+		function: f,
 		value:    value,
+		self:     self,
 		percent:  percent,
 	}
 
@@ -73,11 +77,11 @@ func (n *treeNode) isLeaf() bool {
 func (n *treeNode) filter(searchField string) bool {
 	var visible bool
 
-	if searchField == "" {
+	if searchField == "" || n.function.Name == "" {
 		visible = true
-	} else if n.function != nil && strings.Contains(strings.ToLower(n.function.Name), strings.ToLower(searchField)) {
+	} else if strings.Contains(strings.ToLower(n.function.Name), strings.ToLower(searchField)) {
 		visible = true
-	} else if n.function != nil && strings.Contains(strings.ToLower(n.function.File), strings.ToLower(searchField)) {
+	} else if strings.Contains(strings.ToLower(n.function.File), strings.ToLower(searchField)) {
 		visible = true
 	}
 

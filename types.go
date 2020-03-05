@@ -23,6 +23,7 @@ type Function struct {
 	Name       string
 	File       string
 	LineNumber uint64
+	Self       int64
 }
 
 func (f Function) String(lineNumber bool) string {

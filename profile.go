@@ -16,7 +16,6 @@ type Profile struct {
 	// "cpu" or "heap"
 	Type string
 
-	functionsMap           FunctionsMap
 	functionsMapByLocation ManyFunctionsMap
 	locationsMap           LocationsMap
 	stringsMap             StringsMap
@@ -45,7 +44,7 @@ func NewProfile(p *pprof.Profile, mode sampleMode) (*Profile, error) {
 		return nil, fmt.Errorf("unsupported type: %s", typ)
 	}
 
-	profile := readProfile(p, stringsMap, functionsMap, functionsMapByLocation, locationsMap, mode)
+	profile := readProfile(p, stringsMap, functionsMapByLocation, locationsMap, mode)
 
 	switch typ {
 	case "cpu":
@@ -61,8 +60,7 @@ func ReadProfileType(p *pprof.Profile) string {
 	return p.StringTable[uint64(p.GetPeriodType().Type)]
 }
 
-func readProfile(p *pprof.Profile, stringsMap StringsMap,
-	functionsMap FunctionsMap, functionsMapByLocation ManyFunctionsMap,
+func readProfile(p *pprof.Profile, stringsMap StringsMap, functionsMapByLocation ManyFunctionsMap,
 	locationsMap LocationsMap, mode sampleMode) *Profile {
 
 	var samples Samples
@@ -84,16 +82,24 @@ func readProfile(p *pprof.Profile, stringsMap StringsMap,
 
 	for _, pprofSample := range p.Sample {
 		var sample Sample
+		// cpu [1] cpu usage
+		// space [1] heap allocated
+		// space [3] heap in use
+		value := pprofSample.GetValue()[idx]
+
 		for i := len(pprofSample.LocationId) - 1; i >= 0; i-- {
 			l := pprofSample.LocationId[i]
 			sample.Functions = append(sample.Functions, functionsMapByLocation[l]...)
-
-			// cpu [1] cpu usage
-			// space [1] heap allocated
-			// space [3] heap in use
-			sample.Value = pprofSample.GetValue()[idx]
+			sample.Value = value
 		}
+
+		// compute the self time for the leaf
+		leaf := sample.Functions[len(sample.Functions)-1]
+		leaf.Self += value
+		sample.Functions[len(sample.Functions)-1] = leaf
+
 		samples = append(samples, sample)
+
 	}
 
 	// compute the total sampling time
@@ -113,7 +119,6 @@ func readProfile(p *pprof.Profile, stringsMap StringsMap,
 		TotalSampling:   totalSum,
 		CaptureDuration: time.Duration(p.GetDurationNanos()),
 
-		functionsMap:           functionsMap,
 		functionsMapByLocation: functionsMapByLocation,
 		locationsMap:           locationsMap,
 		stringsMap:             stringsMap,
@@ -131,7 +136,7 @@ func (p *Profile) BuildTree(treeName string, aggregateByFunction bool, searchFie
 			if s.Value == 0 {
 				continue
 			}
-			node = node.AddFunction(f, s.Value, s.PercentTotal, aggregateByFunction)
+			node = node.AddFunction(f, s.Value, f.Self, s.PercentTotal, aggregateByFunction)
 		}
 	}
 
