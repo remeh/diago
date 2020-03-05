@@ -23,6 +23,7 @@ type GUI struct {
 	mode                sampleMode
 	searchField         string
 	aggregateByFunction bool
+	expandAll           bool
 }
 
 type sampleMode string
@@ -85,6 +86,9 @@ func (g *GUI) onSearch() {
 	g.tree = g.profile.BuildTree(config.File, g.aggregateByFunction, g.searchField)
 }
 
+func (g *GUI) onExpandAll() {
+}
+
 func (g *GUI) reloadProfile() {
 	// read the pprof profile
 	// ----------------------
@@ -109,7 +113,7 @@ func (g *GUI) windowLoop() {
 	})
 }
 
-func (g *GUI) toolbox() *giu.LineWidget {
+func (g *GUI) toolbox() giu.Layout {
 	size := giu.Context.GetPlatform().DisplaySize()
 	scale := giu.Context.GetPlatform().GetContentScale()
 
@@ -137,9 +141,14 @@ func (g *GUI) toolbox() *giu.LineWidget {
 			giu.RadioButton("inuse", g.mode == ModeHeapInuse, g.onInuse))
 	}
 
-	return giu.Line(
-		widgets...,
-	)
+	return giu.Layout{
+		giu.Line(
+			widgets...,
+		),
+		giu.Line(
+			giu.Checkbox("Expand all", &g.expandAll, g.onExpandAll),
+		),
+	}
 }
 
 func (g *GUI) treeFromFunctionsTree(tree *FunctionsTree) giu.Layout {
@@ -181,6 +190,9 @@ func (g *GUI) treeNodeFromFunctionsTreeNode(node *treeNode) giu.Layout {
 		}
 
 		flags := giu.TreeNodeFlagsSpanAvailWidth
+		if g.expandAll {
+			flags |= giu.TreeNodeFlagsDefaultOpen
+		}
 		if child.isLeaf() {
 			flags |= giu.TreeNodeFlagsLeaf
 		}
