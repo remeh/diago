@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -18,7 +17,7 @@ type Profile struct {
 	Type string
 
 	functionsMap           FunctionsMap
-	functionsMapByLocation FunctionsMap
+	functionsMapByLocation ManyFunctionsMap
 	locationsMap           LocationsMap
 	stringsMap             StringsMap
 }
@@ -63,7 +62,7 @@ func ReadProfileType(p *pprof.Profile) string {
 }
 
 func readProfile(p *pprof.Profile, stringsMap StringsMap,
-	functionsMap FunctionsMap, functionsMapByLocation FunctionsMap,
+	functionsMap FunctionsMap, functionsMapByLocation ManyFunctionsMap,
 	locationsMap LocationsMap, mode sampleMode) *Profile {
 
 	var samples Samples
@@ -87,7 +86,7 @@ func readProfile(p *pprof.Profile, stringsMap StringsMap,
 		var sample Sample
 		for i := len(pprofSample.LocationId) - 1; i >= 0; i-- {
 			l := pprofSample.LocationId[i]
-			sample.Functions = append(sample.Functions, functionsMapByLocation[l])
+			sample.Functions = append(sample.Functions, functionsMapByLocation[l]...)
 
 			// cpu [1] cpu usage
 			// space [1] heap allocated
@@ -145,39 +144,40 @@ func (p *Profile) BuildTree(treeName string, aggregateByFunction bool, searchFie
 	return tree
 }
 
-func buildLocationsMap(profile *pprof.Profile, stringsMap StringsMap, functionsMap FunctionsMap) (LocationsMap, FunctionsMap) {
+func buildLocationsMap(profile *pprof.Profile, stringsMap StringsMap, functionsMap FunctionsMap) (LocationsMap, ManyFunctionsMap) {
 	rv := make(LocationsMap)
-	lrv := make(FunctionsMap)
+	lrv := make(ManyFunctionsMap)
 
 	for _, location := range profile.Location {
-		// TODO(remy): there could be many lines here.
-		// > A location has multiple lines if it reflects multiple program sources,
-		// > for example if representing inlined call stacks.
-		if len(location.Line) > 1 {
-			log.Println("warn: many lines in a Location, unsupported for now")
-		}
-
 		if location.Line[0] == nil {
 			continue
 		}
 
-		line := location.Line[0]
-		loc := Location{
-			Function: functionsMap[line.GetFunctionId()],
+		loc := Location{}
+
+		for idx := len(location.Line) - 1; idx >= 0; idx-- {
+			line := location.Line[idx]
+			inlined := idx != len(location.Line)-1
+
+			f := functionsMap[line.GetFunctionId()]
+			f.LineNumber = uint64(line.GetLine())
+			if inlined {
+				f.Name = fmt.Sprintf("(inlined) %s", f.Name)
+			}
+			loc.Functions = append(loc.Functions, f)
+
+			// set the line number in functions map if not inlined
+			if !inlined {
+				f := functionsMap[line.GetFunctionId()]
+				f.LineNumber = uint64(line.GetLine())
+				functionsMap[line.GetFunctionId()] = f
+			}
+
+			fs := lrv[uint64(location.GetId())]
+			lrv[uint64(location.GetId())] = append(fs, f)
+
+			rv[uint64(location.GetId())] = loc
 		}
-		loc.Function.LineNumber = uint64(line.GetLine())
-		rv[uint64(location.GetId())] = loc
-
-		// TODO(remy): because there could be many lines, there could be
-		//			   many functions here. Didn't see this in any profile
-		//			   created by Go http/pprof though.
-
-		// set the line number in functions
-		f := functionsMap[line.GetFunctionId()]
-		f.LineNumber = uint64(line.GetLine())
-
-		lrv[uint64(location.GetId())] = f
-		functionsMap[line.GetFunctionId()] = f
 	}
 
 	return rv, lrv

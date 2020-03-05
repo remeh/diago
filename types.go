@@ -5,6 +5,7 @@ import "fmt"
 type StringsMap map[uint64]string
 type LocationsMap map[uint64]Location
 type FunctionsMap map[uint64]Function
+type ManyFunctionsMap map[uint64][]Function // TODO(remy): better naming...
 
 type Sample struct {
 	Functions    []Function
@@ -15,7 +16,7 @@ type Sample struct {
 type Samples []Sample
 
 type Location struct {
-	Function
+	Functions []Function
 }
 
 type Function struct {
