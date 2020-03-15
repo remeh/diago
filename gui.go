@@ -217,9 +217,9 @@ func (g *GUI) texts(node *treeNode) (value string, self string, tooltip string, 
 		self = humanize.IBytes(uint64(node.self))
 		tooltip = fmt.Sprintf("%s of %s\nself: %s", value, humanize.IBytes(g.profile.TotalSampling), self)
 	}
-	lineText = fmt.Sprintf("%s %s:%d - %s / self: %s", node.function.Name, path.Base(node.function.File), node.function.LineNumber, value, self)
+	lineText = fmt.Sprintf("%s %s:%d - %s - self: %s", node.function.Name, path.Base(node.function.File), node.function.LineNumber, value, self)
 	if g.aggregateByFunction {
-		lineText = fmt.Sprintf("%s %s - %s / self: %s", node.function.Name, path.Base(node.function.File), value, self)
+		lineText = fmt.Sprintf("%s %s - %s - self: %s", node.function.Name, path.Base(node.function.File), value, self)
 	}
 	return value, self, tooltip, lineText
 }
