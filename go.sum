@@ -1,5 +1,7 @@
 github.com/AllenDang/giu v0.0.0-20200226083419-f5bcff7367a8 h1:h4coBygNH4U8Gy6c7MtR+WWF4QG1o02ggeC8S+zZiXA=
 github.com/AllenDang/giu v0.0.0-20200226083419-f5bcff7367a8/go.mod h1:50UZLjnr/JyJgck0lh2hkTUkQsCGDVSMsZYn09bS2Ic=
+github.com/AllenDang/giu v0.0.0-20200313055528-832e2ebad38f h1:vQQBj6CJ3dBLmRqV1KR8IvBTfZsPpneDSKRKMkYbiZw=
+github.com/AllenDang/giu v0.0.0-20200313055528-832e2ebad38f/go.mod h1:50UZLjnr/JyJgck0lh2hkTUkQsCGDVSMsZYn09bS2Ic=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=
