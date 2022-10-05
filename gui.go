@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/AllenDang/giu"
-	"github.com/AllenDang/giu/imgui"
+	"github.com/AllenDang/imgui-go"
 	"github.com/dustin/go-humanize"
 
 	"github.com/remeh/diago/pprof"
@@ -63,8 +63,8 @@ func NewGUI(profile *pprof.Profile) *GUI {
 }
 
 func (g *GUI) OpenWindow() {
-	wnd := giu.NewMasterWindow("Diago", 800, 600, 0, nil)
-	wnd.Main(g.windowLoop)
+	wnd := giu.NewMasterWindow("Diago", 800, 600, 0)
+	wnd.Run(g.windowLoop)
 }
 
 func (g *GUI) onAggregationClick() {
@@ -103,28 +103,28 @@ func (g *GUI) reloadProfile() {
 }
 
 func (g *GUI) windowLoop() {
-	giu.SingleWindow("Diago", giu.Layout{
+	giu.SingleWindow().Layout(
 		g.toolbox(),
 		g.treeFromFunctionsTree(g.tree),
-	})
+	)
 }
 
-func (g *GUI) toolbox() *giu.LineWidget {
+func (g *GUI) toolbox() *giu.RowWidget {
 	size := giu.Context.GetPlatform().DisplaySize()
-	scale := giu.Context.GetPlatform().GetContentScale()
 
 	widgets := make([]giu.Widget, 0)
 
 	// search bar
 	// ----------------------
 
-	widgets = append(widgets,
-		giu.InputTextV("filter...", size[0]/4/scale, &g.searchField, imgui.InputTextFlagsCallbackAlways, nil, g.onSearch))
+	filterText := giu.InputText(&g.searchField).Flags(imgui.InputTextFlagsCallbackAlways).Label("Filter...").OnChange(g.onSearch).Size(size[0] / 4)
+
+	widgets = append(widgets, filterText)
 
 	// aggregate per func option
 	// ----------------------
 	widgets = append(widgets,
-		giu.Checkbox("aggregate by functions", &g.aggregateByFunction, g.onAggregationClick))
+		giu.Checkbox("aggregate by functions", &g.aggregateByFunction).OnChange(g.onAggregationClick))
 	widgets = append(widgets,
 		giu.Tooltip("By default, Diago aggregates by functions, uncheck to have the information up to the lines of code"))
 
@@ -132,12 +132,12 @@ func (g *GUI) toolbox() *giu.LineWidget {
 	// ----------------------
 	if g.mode == ModeHeapAlloc || g.mode == ModeHeapInuse {
 		widgets = append(widgets,
-			giu.RadioButton("allocated", g.mode == ModeHeapAlloc, g.onAllocated))
+			giu.RadioButton("allocated", g.mode == ModeHeapAlloc).OnChange(g.onAllocated))
 		widgets = append(widgets,
-			giu.RadioButton("inuse", g.mode == ModeHeapInuse, g.onInuse))
+			giu.RadioButton("inuse", g.mode == ModeHeapInuse).OnChange(g.onInuse))
 	}
 
-	return giu.Line(
+	return giu.Row(
 		widgets...,
 	)
 }
@@ -160,12 +160,8 @@ func (g *GUI) treeFromFunctionsTree(tree *FunctionsTree) giu.Layout {
 	// ----------------------
 
 	return giu.Layout{
-		giu.Line(
-			giu.TreeNode(
-				text,
-				giu.TreeNodeFlagsNone|giu.TreeNodeFlagsFramed|giu.TreeNodeFlagsDefaultOpen,
-				g.treeNodeFromFunctionsTreeNode(tree.root),
-			),
+		giu.Row(
+			giu.TreeNode(text).Flags(giu.TreeNodeFlagsNone | giu.TreeNodeFlagsFramed | giu.TreeNodeFlagsDefaultOpen).Layout(g.treeNodeFromFunctionsTreeNode(tree.root)),
 		),
 	}
 }
@@ -192,16 +188,12 @@ func (g *GUI) treeNodeFromFunctionsTreeNode(node *treeNode) giu.Layout {
 		// append the line to the tree
 		// ----------------------
 
-		scale := giu.Context.GetPlatform().GetContentScale()
-		rv = append(rv, giu.Line(
-			giu.ProgressBar(float32(child.percent)/100, 90/scale, 0, fmt.Sprintf("%.3f%%", child.percent)),
+		rv = append(rv, giu.Row(
+			giu.ProgressBar(float32(child.percent)/100).Size(90, 0).Overlayf("%.3f%%", child.percent),
 			giu.Tooltip(tooltip),
-			giu.TreeNode(
-				lineText,
-				flags,
-				g.treeNodeFromFunctionsTreeNode(child),
-			),
-		))
+			giu.TreeNode(lineText).Flags(flags).Layout(g.treeNodeFromFunctionsTreeNode(child)),
+		),
+		)
 	}
 
 	return rv
